@@ -21,10 +21,20 @@ PIPE_TILEMAP_OFFSET	= (PIPE_EMPTY_TILE + 1) | (PIPE_PALETTE << TILEMAP_PALETTE_S
 CONFIG	PIPE_PLAY_WIDTH, 12
 CONFIG  PIPE_PLAY_HEIGHT, 12
 
+CONFIG	STARTING_ANIMATION_SPEED, 256 / (3 * FPS / PIPE_ANIMATION_COUNT)
+
 
 PipeBlockBankOffset	= PipeBlockBank << 16
 
 MODULE PipeGame
+
+.enum GameState
+	GAME_OVER	=  0
+	WAIT_FOR_START	=  2
+	PLAY_GAME	=  4
+	PAUSE		=  6
+	LEAKING		=  8
+.endenum
 
 .segment "SHADOW"
 	BYTE	updateBufferOnZero
@@ -37,10 +47,28 @@ MODULE PipeGame
 	;; Each cell is a pointer to a PipeBlock in PipeBlockBank
 	ADDR	cells, 16 * 14
 
+	;; Current game state
+	ADDR	state
+
+
+	;; Address of the PipeBlockAnimation that is being animated.
+	;; If NULL then there is no animation
+	ADDR	animationPtr
+
+	;; Address of the current cell being animated.
+	ADDR	animationCellPos
+
+	;; The speed of the animation
+	;; 0:8:8 fixed point
+	WORD	animationSpeed
+
+	;; Current frame counter
+	;; Starts at PIPE_ANIMATION_COUNT goes down to 0
+	;; 0:8:8 fixed point
+	WORD	animationCounter
+
 
 	WORD	tmp1
-
-
 .code
 
 .A8
@@ -99,14 +127,11 @@ ROUTINE Init
 
 	; ::TODO load background::
 
-	JSR	Clear
-
-	; ::TODO starting position::
-
 	LDA	#TM_BG1 | TM_OBJ
 	STA	TM
 
-	RTS
+	JMP	NewGame
+
 
 
 
@@ -129,8 +154,82 @@ ROUTINE VBlank
 .A8
 .I16
 ROUTINE Update
-	; ::TODO::
+	JSR	Screen__WaitFrame
 
+	LDX	state
+	JSR	(.loword(StateTable), X)
+
+	; ::TODO metasprites::
+
+	.assert GameState::GAME_OVER = 0, error, "Bad assumption"
+	LDX	state
+	IF_ZERO
+		CLC
+		RTS
+	ENDIF
+
+	SEC
+	RTS
+
+.rodata
+StateTable:
+	.addr	GameOver
+	.addr	WaitForStart
+	.addr	PlayGame
+	.addr	PauseGame
+	.addr	Leaking
+
+.code
+
+
+
+.A8
+.I16
+ROUTINE	NewGame
+	PHB
+	LDA	#.bankbyte(buffer)
+	PHA
+	PLB
+
+	JSR	Clear
+
+	REP	#$30
+.A16
+
+	;; ::TODO random start pipe and position::
+	LDX	#0
+	LDY	#4 * 16 + 8
+	STY	animationCellPos
+
+	LDA	f:StartingBlocks, X
+	STA	cells, Y
+
+	ADD	#PipeBlock::animations
+
+	REPEAT
+		TAX
+		LDA	f:PipeBlockBankOffset + PipeBlockAnimation::pipeBlockPtr, X
+	WHILE_ZERO
+		TXA
+		ADD	#.sizeof(PipeBlockAnimation)
+	WEND
+
+	STX	animationPtr
+
+	;; ::TODO speed determined by level and region::
+	LDA	#STARTING_ANIMATION_SPEED
+	STA	animationSpeed
+
+	STZ	animationCounter
+
+	SEP	#$20
+.A8
+	JSR	DrawAnimation
+
+	LDX	#GameState::WAIT_FOR_START
+	STX	state
+
+	PLB
 
 	RTS
 
@@ -193,15 +292,14 @@ ROUTINE	RedrawBuffer
 		CPX	#.sizeof(cells)
 	UNTIL_GE
 
-
-	;; ::TODO draw the next pieces bit::
-
 	SEP	#$20
 .A8
 
-	STZ	updateBufferOnZero
-	RTS
+	JSR	DrawAnimation
 
+	;; ::TODO draw the next pieces bit::
+
+	RTS
 
 
 ;; Fills the buffer with empty tiles.
@@ -238,6 +336,152 @@ ROUTINE Clear
 	RTS
 
 
+;; Game States
+;; ===========
+
+; DP = $7E
+.A8
+.I16
+ROUTINE	GameOver
+	; ::TODO code::
+	RTS
+
+
+
+;; Starts a new Game
+; DP = $7E
+.A8
+.I16
+ROUTINE	WaitForStart
+	; ::TODO code::
+
+	LDX	#GameState::PLAY_GAME
+	STX	state
+
+	RTS
+
+
+;; Plays a single frame of the game
+; DP = $7E
+.A8
+.I16
+ROUTINE	PlayGame
+	; Process the pipe animation
+	REP	#$30
+.A16
+	LDX	animationPtr
+	IF_NOT_ZERO
+		LDA	animationCounter
+		ADD	animationSpeed
+		STA	animationCounter
+
+		CMP	#PIPE_ANIMATION_COUNT << 8
+		IF_GE
+			LDX	animationPtr
+			LDA	f:PipeBlockAnimation::pipeBlockPtr
+
+			LDX	animationCellPos
+			STA	cells, X
+
+			SEP	#$20
+.A8
+			JSR	DrawTile
+
+			; ::TODO next pipe
+			LDX	#0
+			STX	animationCellPos
+			STX	animationPtr
+		ELSE
+.A16
+			SEP	#$20
+.A8
+			JSR	DrawAnimation
+		ENDIF
+	ENDIF
+
+
+	; ::TODO code::
+	RTS
+
+
+
+;; The pipe is leaking
+; DP = $7E
+.A8
+.I16
+ROUTINE	Leaking
+	; ::TODO code::
+	REPEAT
+	FOREVER
+
+
+
+;; The game is paused
+; DP = $7E
+.A8
+.I16
+ROUTINE	PauseGame
+	RTS
+
+
+
+;; Common
+;; ======
+
+
+;; Draws the tile currently being animated
+;; REQUIRES: DP access buffer
+.A8
+.I16
+ROUTINE DrawAnimation
+	LDX	animationPtr
+	IF_NOT_ZERO
+		LDA	animationCounter + 1
+
+		REP	#$30
+.A16
+		AND	#$00FF
+		ASL
+		ASL
+
+		ADD	f:PipeBlockBankOffset + PipeBlockAnimation::animationTile, X
+		TAX
+
+		LDA	animationCellPos
+		AND	#$FFE0
+		ASL
+		STA	tmp1
+
+		LDA	animationCellPos
+		AND	#$1E
+		ADD	tmp1
+		ASL
+		TAY
+
+		LDA	f:PipeTileMap, X
+		ADD	#PIPE_TILEMAP_OFFSET
+		STA	buffer, Y
+
+		LDA	f:PipeTileMap + 2, X
+		ADD	#PIPE_TILEMAP_OFFSET
+		STA	buffer + 2, Y
+
+		LDA	f:PipeTileMap + 64, X
+		ADD	#PIPE_TILEMAP_OFFSET
+		STA	buffer + 64, Y
+
+		LDA	f:PipeTileMap + 64 + 2, X
+		ADD	#PIPE_TILEMAP_OFFSET
+		STA	buffer + 64 + 2, Y
+
+		SEP	#$20
+.A8
+		STZ	updateBufferOnZero
+	ENDIF
+
+	RTS
+
+
 ;; Draws the given tile to the given coordinates
 ;; REQUIRES: DB access buffer
 ;; INPUT:
@@ -255,6 +499,10 @@ ROUTINE DrawTile
 
 	REP	#$30
 .A16
+
+	CPX	animationCellPos
+	BEQ	DrawAnimation
+
 
 	TXA
 	AND	#$FFE0
@@ -303,6 +551,7 @@ ROUTINE DrawTile
 	STZ	updateBufferOnZero
 
 	RTS
+
 
 
 .segment "BANK1"

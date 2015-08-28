@@ -34,7 +34,18 @@ ROUTINE Main
 	LDA	#15
 	STA	INIDISP
 
+	LDA	#$7E
+	PHA
+	PLB
+
 	REPEAT
+		JSR	PipeTiles__NewGame
+
+		REPEAT
+			JSR	Screen__WaitFrame
+
+			JSR	PipeTiles__Update
+		UNTIL_C_CLEAR
 	FOREVER
 
 
