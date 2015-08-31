@@ -39,6 +39,7 @@ PIPE_ANIMATION_COUNT = 15
 	metaSpritePtr		.addr
 
 	;; The animations for each of the 4 directions
+	;; Directions are in the order of PIPE_DIRECTION enum
 	animations	.tag	PipeBlockAnimation 4
 .endstruct
 

@@ -516,15 +516,15 @@ ROUTINE	PlayGame
 	; --------------------------
 
 	LDX	animationPtr
-	IF_NOT_ZERO
+	IFL_NOT_ZERO
 		LDA	animationCounter
 		ADD	animationSpeed
 		STA	animationCounter
 
 		CMP	#(PIPE_ANIMATION_COUNT + 1) << 8
-		IF_GE
+		IFL_GE
 			LDX	animationPtr
-			LDA	f:PipeBlockAnimation::pipeBlockPtr
+			LDA	f:PipeBlockBankOffset + PipeBlockAnimation::pipeBlockPtr, X
 
 			LDX	animationCellPos
 			STA	grid, X
@@ -533,10 +533,112 @@ ROUTINE	PlayGame
 .A8
 			JSR	DrawTile
 
-			; ::TODO next pipe
-			LDX	#0
-			STX	animationCellPos
+			; Select next pipe
+			LDX	animationPtr
+			LDA	f:PipeBlockBankOffset + PipeBlockAnimation::exitDirection, X
+
+			LDY	animationCellPos
+
+
+			IF_BIT	#PIPE_DIRECTION::UP | PIPE_DIRECTION::DOWN
+				CMP	#PIPE_DIRECTION::UP
+				IF_EQ
+					; UP
+
+					REP	#$30
+.A16
+					LDA	animationCellPos
+					AND	#$FFE0
+					IF_ZERO
+						JMP	SprungALeak
+					ENDIF
+
+					LDA	animationCellPos
+					SUB	#16 * 2
+					STA	animationCellPos
+
+					LDY	#0 * .sizeof(PipeBlockAnimation)
+				ELSE
+					; DOWN
+
+					REP	#$30
+.A16
+					LDA	animationCellPos
+					AND	#$FFE0
+					CMP	#(PIPE_PLAYFIELD_HEIGHT - 1) * 32
+					IF_GE
+						JMP	SprungALeak
+					ENDIF
+
+					LDA	animationCellPos
+					ADD	#16 * 2
+					STA	animationCellPos
+
+					LDY	#1 * .sizeof(PipeBlockAnimation)
+				ENDIF
+			ELSE
+.A8
+				CMP	#PIPE_DIRECTION::LEFT
+				IF_EQ
+					; LEFT
+
+					REP	#$30
+.A16
+					LDA	animationCellPos
+					AND	#$1F
+					IF_ZERO
+						JMP	SprungALeak
+					ENDIF
+
+					LDA	animationCellPos
+					DEC
+					DEC
+					STA	animationCellPos
+
+					LDY	#2 * .sizeof(PipeBlockAnimation)
+				ELSE
+					; RIGHT
+
+					REP	#$30
+.A16
+					LDA	animationCellPos
+					AND	#$1F
+					CMP	#(PIPE_PLAYFIELD_WIDTH - 1) * 2
+					IF_GE
+						JMP	SprungALeak
+					ENDIF
+
+					LDA	animationCellPos
+					INC
+					INC
+					STA	animationCellPos
+
+					LDY	#3 * .sizeof(PipeBlockAnimation)
+				ENDIF
+			ENDIF
+
+.A16
+			; A = new animationCellPos
+			; Y = pipeBlockAnimation offset
+
+			TAX
+			LDA	grid, X
+			IF_ZERO
+				JMP	SprungALeak
+			ENDIF
+
+			STY	tmp1
+			ADD	tmp1
+			ADD	#PipeBlock::animations
+			TAX
+
+			LDA	f:PipeBlockBankOffset + PipeBlockAnimation::pipeBlockPtr, X
+			IF_ZERO
+				JMP	SprungALeak
+			ENDIF
+
 			STX	animationPtr
+			STZ	animationCounter
 		ELSE
 .A16
 			SEP	#$20
@@ -656,6 +758,18 @@ ROUTINE	PlayGame
 
 	RTS
 
+
+;; Pipe is leaking
+;; Setup the game state
+.A16
+.I16
+ROUTINE	SprungALeak
+	LDX	#GameState::LEAKING
+	STX	state
+
+	SEP	#$20
+.A8
+	RTS
 
 
 ;; The pipe is leaking
