@@ -552,6 +552,27 @@ ROUTINE	PlayGame
 
 	STA	cursorValidIfZero
 
+	IF_ZERO
+		; Place piece on button press
+		; ---------------------------
+
+		REP	#$30
+.A16
+		LDA	Controller__pressed
+
+		IF_BIT	#JOY_BUTTONS
+			; X = cell pos
+			LDA	cursorPipe
+			STA	cells, X
+
+			JSR	DrawTile
+			JSR	GenerateNext
+		ENDIF
+
+		SEP	#$20
+.A8
+	ENDIF
+
 	JSR	DrawCursorPipe
 	JSR	DrawNextList
 
