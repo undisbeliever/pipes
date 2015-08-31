@@ -463,6 +463,7 @@ ROUTINE	PlayGame
 
 	SEP	#$20
 .A8
+	JSR	DrawCursorPipe
 	JSR	DrawNextList
 
 	; ::TODO code::
@@ -626,6 +627,58 @@ ROUTINE DrawTile
 	SEP	#$20
 .A8
 	STZ	updateBufferOnZero
+
+	RTS
+
+
+;; Draws the cursor pipe
+; DB = $7E
+.A8
+.I16
+ROUTINE DrawCursorPipe
+	REP	#$30
+.A16
+	LDA	cursorXpos
+	AND	#$00FF
+	ASL
+	ASL
+	ASL
+	ASL
+	ADD	#PIPE_PLAYFIELD_XOFFSET * 8
+	STA	MetaSprite__xPos
+
+	LDA	cursorYpos
+	AND	#$00FF
+	ASL
+	ASL
+	ASL
+	ASL
+	ADD	#PIPE_PLAYFIELD_YOFFSET * 8
+	STA	MetaSprite__yPos
+
+	SEP	#$20
+.A8
+
+	; ::TODO cursor position invalid::
+
+	LDY	#0
+	LDX	#.loword(PipeMetaSprite_Cursor)
+	JSR	MetaSprite__ProcessMetaSprite_Y
+
+
+	REP	#$20
+.A16
+
+	LDX	cursorPipe
+	LDA	f:PipeBlockBankOffset + PipeBlock::metaSpritePtr, X
+	TAX
+
+	SEP	#$20
+.A8
+
+
+	LDY	#0
+	JSR	MetaSprite__ProcessMetaSprite_Y
 
 	RTS
 
