@@ -31,7 +31,7 @@
 .macro _pipe_metasprite_ char
 	.byte 1
 		.word	0
-		.word	char | (2 << OAM_CHARATTR_ORDER_SHIFT)
+		.word	char | (3 << OAM_CHARATTR_ORDER_SHIFT)
 		.byte	$FF
 .endmacro
 	
