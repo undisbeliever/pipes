@@ -7,6 +7,7 @@
 .include "routines/random.h"
 .include "routines/block.h"
 .include "routines/screen.h"
+.include "routines/controller.h"
 .include "routines/metasprite.h"
 .include "routines/resourceloader.h"
 
@@ -65,6 +66,9 @@ MODULE PipeGame
 	;; Address of the PipeBlock in PipeBlockBank
 	;; that the cursor is on
 	ADDR	cursorPipe
+
+	;; Non-zero if the cursor is on a free cell
+	BYTE	cursorValidIfZero
 
 	;; The xPos of the cursor
 	BYTE	cursorXpos
@@ -428,9 +432,11 @@ ROUTINE	WaitForStart
 .A8
 .I16
 ROUTINE	PlayGame
-	; Process the pipe animation
 	REP	#$30
 .A16
+	; Process the pipe animation
+	; --------------------------
+
 	LDX	animationPtr
 	IF_NOT_ZERO
 		LDA	animationCounter
@@ -461,12 +467,94 @@ ROUTINE	PlayGame
 		ENDIF
 	ENDIF
 
+
+	; Move cursor
+	; -----------
+
 	SEP	#$20
 .A8
+
+	JSR	Controller__UpdateRepeatingDPad
+
+	LDA	Controller__pressed + 1
+
+	IF_BIT	#JOYH_UP
+		LDA	cursorYpos
+		DEC
+		IF_MINUS
+			LDA	#0
+		ENDIF
+
+		STA	cursorYpos
+
+	ELSE_BIT #JOYH_DOWN
+		LDA	cursorYpos
+		INC
+		CMP	#PIPE_PLAYFIELD_HEIGHT
+		IF_GE
+			LDA	#PIPE_PLAYFIELD_HEIGHT - 1
+		ENDIF
+
+		STA	cursorYpos
+	ENDIF
+
+	LDA	Controller__pressed + 1
+
+	IF_BIT	#JOYH_LEFT
+		LDA	cursorXpos
+		DEC
+		IF_MINUS
+			LDA	#0
+		ENDIF
+
+		STA	cursorXpos
+
+	ELSE_BIT #JOYH_RIGHT
+		LDA	cursorXpos
+		INC
+		CMP	#PIPE_PLAYFIELD_WIDTH
+		IF_GE
+			LDA	#PIPE_PLAYFIELD_WIDTH - 1
+		ENDIF
+
+		STA	cursorXpos
+	ENDIF
+
+
+	; Test if cursor is on a free cell
+	; --------------------------------
+	REP	#$30
+.A16
+	LDA	cursorYpos
+	AND	#$00FF
+	ASL
+	ASL
+	ASL
+	ASL
+	STA	tmp1
+
+	LDA	cursorXpos
+	AND	#$00FF
+	ADD	tmp1
+	ASL
+
+	TAX
+	LDA	cells, X
+
+
+	SEP	#$20
+.A8
+	IF_ZERO
+		LDA	#0
+	ELSE
+		LDA	#$FF
+	ENDIF
+
+	STA	cursorValidIfZero
+
 	JSR	DrawCursorPipe
 	JSR	DrawNextList
 
-	; ::TODO code::
 	RTS
 
 
@@ -659,10 +747,14 @@ ROUTINE DrawCursorPipe
 	SEP	#$20
 .A8
 
-	; ::TODO cursor position invalid::
+	LDA	cursorValidIfZero
+	IF_ZERO
+		LDX	#.loword(PipeMetaSprite_Cursor)
+	ELSE
+		LDX	#.loword(PipeMetaSprite_InvalidCursor)
+	ENDIF
 
 	LDY	#0
-	LDX	#.loword(PipeMetaSprite_Cursor)
 	JSR	MetaSprite__ProcessMetaSprite_Y
 
 
