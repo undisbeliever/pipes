@@ -115,9 +115,9 @@ PipeBlockBank = .bankbyte(*)
 
 .proc StartingBlocks
 	.addr	Up
+	.addr	Right
 	.addr	Down
 	.addr	Left
-	.addr	Right
 
 ::N_STARTING_BLOCKS = (* - ::StartingBlocks) / 2
 
@@ -134,42 +134,42 @@ Up_Filled:
 	_filled_block_	15, 20
 
 
-Down:
+Right:
 	_tile_	0, 21
 	.addr	0
 
 	_cannot_enter_
-	_animation_	0, 21, DOWN, Down_Filled
 	_cannot_enter_
 	_cannot_enter_
+	_animation_	0, 21, RIGHT, Right_Filled
 
-Down_Filled:
+Right_Filled:
 	_filled_block_	15, 21
 
 
-Left:
+Down:
 	_tile_	0, 22
 	.addr	0
 
 	_cannot_enter_
+	_animation_	0, 22, DOWN, Down_Filled
 	_cannot_enter_
-	_animation_	22, 0, LEFT, Left_Filled
 	_cannot_enter_
 
-Left_Filled:
+Down_Filled:
 	_filled_block_	15, 22
 
 
-Right:
+Left:
 	_tile_	0, 23
 	.addr	0
 
 	_cannot_enter_
 	_cannot_enter_
+	_animation_	0, 23, LEFT, Left_Filled
 	_cannot_enter_
-	_animation_	0, 23, RIGHT, Right_Filled
 
-Right_Filled:
+Left_Filled:
 	_filled_block_	15, 23
 
 .endproc
@@ -186,6 +186,7 @@ Right_Filled:
 
 ::N_BLOCKS = (* - ::PipeBlocks) / 2
 
+::PipeBlock_Horizontal:
 Horizontal:
 	_tile_	0, 0
 	.addr	PipeMetaSprite::Horizontal
@@ -200,6 +201,7 @@ Horizontal_Filled:
 	_filled_block_	0, 1
 
 
+::PipeBlock_Vertical:
 Vertical:
 	_tile_	0, 2
 	.addr	PipeMetaSprite::Vertical

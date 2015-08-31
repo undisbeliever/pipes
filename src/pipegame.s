@@ -34,6 +34,8 @@ CONFIG	PIPE_NEXTLIST_YPOS, 24
 
 CONFIG	PIPE_NEXTLIST_SPACING, 1
 
+CONFIG	PIPE_NEWGAME_PADDING, 3
+
 CONFIG	STARTING_ANIMATION_SPEED, 256 / (3 * FPS / PIPE_ANIMATION_COUNT)
 
 PipeBlockBankOffset	= PipeBlockBank << 16
@@ -243,6 +245,19 @@ ROUTINE	NewGame
 
 	JSR	Clear
 
+
+	;; ::TODO speed determined by level and region::
+	LDX	#STARTING_ANIMATION_SPEED
+	STX	animationSpeed
+
+	LDX	#0
+	STX	animationCounter
+
+	STZ	cursorXpos
+	STZ	cursorYpos
+
+
+
 	LDA	#PIPE_MAX_NEXT
 	STA	noOfNextToShow
 
@@ -255,15 +270,39 @@ ROUTINE	NewGame
 	UNTIL_ZERO
 
 
-	STZ	cursorXpos
-	STZ	cursorYpos
+	; Random start location
+	; ---------------------
+
+	LDY	#PIPE_PLAYFIELD_WIDTH - PIPE_NEWGAME_PADDING * 2
+	JSR	Random__Rnd_U16Y
+	STY	tmp1
+
+	LDY	#PIPE_PLAYFIELD_HEIGHT - PIPE_NEWGAME_PADDING * 2
+	JSR	Random__Rnd_U16Y
+	PHY
+
+	LDY	#N_STARTING_BLOCKS
+	JSR	Random__Rnd_U16Y
 
 	REP	#$30
 .A16
+	TYA
+	ASL
+	TAX
 
-	;; ::TODO random start pipe and position::
-	LDX	#0
-	LDY	#((PIPE_PLAYFIELD_HEIGHT - 1) * 16 + PIPE_PLAYFIELD_WIDTH - 1) * 2
+
+
+	PLA
+	ADD	#PIPE_NEWGAME_PADDING
+	ASL
+	ASL
+	ASL
+	ASL
+	ADD	tmp1
+	ADD	#PIPE_NEWGAME_PADDING
+	ASL
+	TAY
+
 	STY	animationCellPos
 
 	LDA	f:StartingBlocks, X
@@ -281,14 +320,53 @@ ROUTINE	NewGame
 
 	STX	animationPtr
 
-	;; ::TODO speed determined by level and region::
-	LDA	#STARTING_ANIMATION_SPEED
-	STA	animationSpeed
 
-	STZ	animationCounter
+	; Draw the second pipe
+
+	; Y = animationCellPos
+
+	LDA	f:PipeBlockBankOffset + PipeBlockAnimation::exitDirection, X
+	AND	#$00FF
+
+	IF_BIT	#PIPE_DIRECTION::UP | PIPE_DIRECTION::DOWN
+		; up/down
+
+		CMP	#PIPE_DIRECTION::UP
+		IF_EQ
+			TYA
+			SUB	#16 * 2
+		ELSE
+			TYA
+			ADD	#16 * 2
+		ENDIF
+
+		TAY
+
+		LDA	#.loword(PipeBlock_Vertical)
+	ELSE
+		; Left/Right
+
+		CMP	#PIPE_DIRECTION::LEFT
+		IF_EQ
+			DEY
+			DEY
+		ELSE
+			; RIGHT
+			INY
+			INY
+		ENDIF
+
+		LDA	#.loword(PipeBlock_Horizontal)
+	ENDIF
+
+	STA	grid, Y
 
 	SEP	#$20
 .A8
+
+	TYX
+	JSR	DrawTile
+
 	JSR	DrawAnimation
 
 	LDX	#GameState::WAIT_FOR_START

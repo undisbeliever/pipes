@@ -8,10 +8,10 @@
 .include "includes/config.inc"
 
 .enum PIPE_DIRECTION
-	UP
-	DOWN
-	LEFT
-	RIGHT
+	UP	= 1
+	DOWN	= 2
+	LEFT	= 4
+	RIGHT	= 8
 .endenum
 
 PIPE_ANIMATION_COUNT = 15
