@@ -55,9 +55,9 @@ MODULE PipeGame
 .segment "WRAM7E"
 	WORD	buffer, 32 * 28
 
-	;; A map of the cells in the game
+	;; A map of the grid in the game
 	;; Each cell is a pointer to a PipeBlock in PipeBlockBank
-	ADDR	cells, 16 * 14
+	ADDR	grid, 16 * 14
 
 	;; Current game state
 	ADDR	state
@@ -249,7 +249,7 @@ ROUTINE	NewGame
 	LDX	#PIPE_MAX_NEXT + 1
 	REPEAT
 		PHX
-		JSR	GenerateNext
+		JSR	GenerateNextPipe
 		PLX
 		DEX
 	UNTIL_ZERO
@@ -267,7 +267,7 @@ ROUTINE	NewGame
 	STY	animationCellPos
 
 	LDA	f:StartingBlocks, X
-	STA	cells, Y
+	STA	grid, Y
 
 	ADD	#PipeBlock::animations
 
@@ -313,7 +313,7 @@ ROUTINE	RedrawBuffer
 	REPEAT
 		PHX
 
-		LDA	cells, X
+		LDA	grid, X
 
 		IF_NOT_ZERO
 			TAX
@@ -354,7 +354,7 @@ ROUTINE	RedrawBuffer
 		ADD	#2
 		TAX
 
-		CPX	#.sizeof(cells)
+		CPX	#.sizeof(grid)
 	UNTIL_GE
 
 	SEP	#$20
@@ -377,11 +377,11 @@ ROUTINE Clear
 	PHB
 
 	LDA	#0
-	STA	f:cells
-	LDX	#.loword(cells)
-	LDY	#.loword(cells) + 2
-	LDA	#.sizeof(cells) - 2 - 1
-	MVN	.bankbyte(cells), .bankbyte(cells)
+	STA	f:grid
+	LDX	#.loword(grid)
+	LDY	#.loword(grid) + 2
+	LDA	#.sizeof(grid) - 2 - 1
+	MVN	.bankbyte(grid), .bankbyte(grid)
 
 
 	LDA	#PIPE_EMPTY_TILE + PIPE_TILEMAP_OFFSET
@@ -449,7 +449,7 @@ ROUTINE	PlayGame
 			LDA	f:PipeBlockAnimation::pipeBlockPtr
 
 			LDX	animationCellPos
-			STA	cells, X
+			STA	grid, X
 
 			SEP	#$20
 .A8
@@ -539,7 +539,7 @@ ROUTINE	PlayGame
 	ASL
 
 	TAX
-	LDA	cells, X
+	LDA	grid, X
 
 
 	SEP	#$20
@@ -563,10 +563,10 @@ ROUTINE	PlayGame
 		IF_BIT	#JOY_BUTTONS
 			; X = cell pos
 			LDA	cursorPipe
-			STA	cells, X
+			STA	grid, X
 
 			JSR	DrawTile
-			JSR	GenerateNext
+			JSR	GenerateNextPipe
 		ENDIF
 
 		SEP	#$20
@@ -703,7 +703,7 @@ ROUTINE DrawTile
 	ADD	#PIPE_PLAYFIELD_XOFFSET * 2 + PIPE_PLAYFIELD_YOFFSET * 64
 	TAY
 
-	LDA	cells, X
+	LDA	grid, X
 	IF_NOT_ZERO
 		TAX
 		LDA	f:PipeBlockBankOffset + PipeBlock::tilePos, X
@@ -859,7 +859,7 @@ ROUTINE DrawNextList
 ; DB = $7E
 .A8
 .I16
-ROUTINE GenerateNext
+ROUTINE GenerateNextPipe
 	REP	#$30
 .A16
 	LDA	nextList
