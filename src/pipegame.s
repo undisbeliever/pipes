@@ -375,7 +375,7 @@ ROUTINE	PlayGame
 		ADD	animationSpeed
 		STA	animationCounter
 
-		CMP	#PIPE_ANIMATION_COUNT << 8
+		CMP	#(PIPE_ANIMATION_COUNT + 1) << 8
 		IF_GE
 			LDX	animationPtr
 			LDA	f:PipeBlockAnimation::pipeBlockPtr
@@ -441,10 +441,20 @@ ROUTINE DrawAnimation
 		REP	#$30
 .A16
 		AND	#$00FF
-		ASL
-		ASL
 
-		ADD	f:PipeBlockBankOffset + PipeBlockAnimation::animationTile, X
+		CMP	#PIPE_ANIMATION_COUNT
+		IF_LT
+			ASL
+			ASL
+
+			ADD	f:PipeBlockBankOffset + PipeBlockAnimation::animationTile, X
+		ELSE
+			; ::HACK the 'final' tile of the animation must be included in
+			; :: The animationCounter. ::
+			LDA	f:PipeBlockBankOffset + PipeBlockAnimation::pipeBlockPtr, X
+			TAX
+			LDA	f:PipeBlockBankOffset + PipeBlock::tilePos, X
+		ENDIF
 		TAX
 
 		LDA	animationCellPos

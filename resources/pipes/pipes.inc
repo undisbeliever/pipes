@@ -50,7 +50,7 @@ Up:
 	_cannot_enter_
 
 Up_Filled:
-	_filled_block_	16, 20
+	_filled_block_	15, 20
 
 
 Down:
@@ -62,7 +62,7 @@ Down:
 	_cannot_enter_
 
 Down_Filled:
-	_filled_block_	16, 21
+	_filled_block_	15, 21
 
 
 Left:
@@ -74,7 +74,7 @@ Left:
 	_cannot_enter_
 
 Left_Filled:
-	_filled_block_	16, 22
+	_filled_block_	15, 22
 
 
 Right:
@@ -86,7 +86,7 @@ Right:
 	_animation_	0, 23, RIGHT, Right_Filled
 
 Right_Filled:
-	_filled_block_	16, 23
+	_filled_block_	15, 23
 
 .endproc
 
