@@ -7,10 +7,12 @@
 .include "routines/random.h"
 .include "routines/block.h"
 .include "routines/screen.h"
+.include "routines/metasprite.h"
 .include "routines/resourceloader.h"
 
 .include "vram.h"
 .include "resources.h"
+
 
 PIPE_PALETTE		= 7
 PIPE_ORDER		= 1
@@ -18,11 +20,20 @@ PIPE_EMPTY_TILE		= 0
 PIPE_TILEMAP_OFFSET	= (PIPE_EMPTY_TILE + 1) | (PIPE_PALETTE << TILEMAP_PALETTE_SHIFT) | (PIPE_ORDER << TILEMAP_ORDER_SHIFT)
 
 
-CONFIG	PIPE_PLAY_WIDTH, 12
-CONFIG  PIPE_PLAY_HEIGHT, 12
+CONFIG	PIPE_MAX_NEXT, 8
+
+CONFIG	PIPE_PLAYFIELD_WIDTH, 12
+CONFIG  PIPE_PLAYFIELD_HEIGHT, 12
+
+CONFIG  PIPE_PLAYFIELD_XOFFSET, 6
+CONFIG  PIPE_PLAYFIELD_YOFFSET, 2
+
+CONFIG	PIPE_NEXTLIST_XPOS, 20
+CONFIG	PIPE_NEXTLIST_YPOS, 24
+
+CONFIG	PIPE_NEXTLIST_SPACING, 1
 
 CONFIG	STARTING_ANIMATION_SPEED, 256 / (3 * FPS / PIPE_ANIMATION_COUNT)
-
 
 PipeBlockBankOffset	= PipeBlockBank << 16
 
@@ -49,6 +60,25 @@ MODULE PipeGame
 
 	;; Current game state
 	ADDR	state
+
+
+	;; Address of the PipeBlock in PipeBlockBank
+	;; that the cursor is on
+	ADDR	cursorPipe
+
+	;; The xPos of the cursor
+	BYTE	cursorXpos
+	;; The yPos of the cursor
+	BYTE	cursorYpos
+
+
+	;; Number of the next items to show on screen
+	BYTE	noOfNextToShow
+
+	;; The list of next items.
+	;; Order first -> last
+	ADDR	nextList,	PIPE_MAX_NEXT
+
 
 
 	;; Address of the PipeBlockAnimation that is being animated.
@@ -116,8 +146,23 @@ ROUTINE Init
 
 	LDA	#PIPE_PALETTE * 16
 	STA	CGADD
-	LDA	#RESOURCES_PALETTES::PIPEGAME__PIPES
+	LDA	#RESOURCES_PALETTES::PIPEGAME__PIPE_TILES
 	JSR	ResourceLoader__LoadPalette_8A
+
+
+	; OAM
+
+	LDY	#PPU_PIPEGAME_OAM_TILES
+	STY	VMADD
+
+	LDA	#RESOURCES_VRAM::PIPEGAME__PIPE_SPRITES
+	JSR	ResourceLoader__LoadVram_8A
+
+	LDA	#128
+	STA	CGADD
+	LDA	#RESOURCES_PALETTES::PIPEGAME__PIPE_SPRITES
+	JSR	ResourceLoader__LoadPalette_8A
+
 
 	; ::DEBUG BG::
 	STZ	CGADD
@@ -154,12 +199,13 @@ ROUTINE VBlank
 .A8
 .I16
 ROUTINE Update
-	JSR	Screen__WaitFrame
+
+	JSR	MetaSprite__InitLoop
 
 	LDX	state
 	JSR	(.loword(StateTable), X)
 
-	; ::TODO metasprites::
+	JSR	MetaSprite__FinalizeLoop
 
 	.assert GameState::GAME_OVER = 0, error, "Bad assumption"
 	LDX	state
@@ -193,12 +239,27 @@ ROUTINE	NewGame
 
 	JSR	Clear
 
+	LDA	#PIPE_MAX_NEXT
+	STA	noOfNextToShow
+
+	LDX	#PIPE_MAX_NEXT + 1
+	REPEAT
+		PHX
+		JSR	GenerateNext
+		PLX
+		DEX
+	UNTIL_ZERO
+
+
+	STZ	cursorXpos
+	STZ	cursorYpos
+
 	REP	#$30
 .A16
 
 	;; ::TODO random start pipe and position::
 	LDX	#0
-	LDY	#4 * 16 + 8
+	LDY	#((PIPE_PLAYFIELD_HEIGHT - 1) * 16 + PIPE_PLAYFIELD_WIDTH - 1) * 2
 	STY	animationCellPos
 
 	LDA	f:StartingBlocks, X
@@ -361,6 +422,7 @@ ROUTINE	WaitForStart
 	RTS
 
 
+
 ;; Plays a single frame of the game
 ; DP = $7E
 .A8
@@ -399,6 +461,9 @@ ROUTINE	PlayGame
 		ENDIF
 	ENDIF
 
+	SEP	#$20
+.A8
+	JSR	DrawNextList
 
 	; ::TODO code::
 	RTS
@@ -466,6 +531,7 @@ ROUTINE DrawAnimation
 		AND	#$1E
 		ADD	tmp1
 		ASL
+		ADD	#PIPE_PLAYFIELD_XOFFSET * 2 + PIPE_PLAYFIELD_YOFFSET * 64
 		TAY
 
 		LDA	f:PipeTileMap, X
@@ -524,6 +590,7 @@ ROUTINE DrawTile
 	ADD	tmp1
 	ASL
 
+	ADD	#PIPE_PLAYFIELD_XOFFSET * 2 + PIPE_PLAYFIELD_YOFFSET * 64
 	TAY
 
 	LDA	cells, X
@@ -563,9 +630,118 @@ ROUTINE DrawTile
 	RTS
 
 
+;; Draws the next pipe list
+; DB = $7E
+.A8
+.I16
+ROUTINE DrawNextList
+	REP	#$30
+.A16
 
-.segment "BANK1"
+	LDA	noOfNextToShow
+	AND	#$000F
+	IF_NOT_ZERO
+		ASL
+		STA	tmp1
+
+		LDA	#PIPE_NEXTLIST_XPOS
+		STA	MetaSprite__xPos
+
+		LDA	#PIPE_NEXTLIST_YPOS + PIPE_MAX_NEXT * (16 + PIPE_NEXTLIST_SPACING)
+		STA	MetaSprite__yPos
+
+
+		LDX	#0
+
+		REPEAT
+			PHX
+
+			LDA	MetaSprite__yPos
+			SUB	#16 + PIPE_NEXTLIST_SPACING
+			STA	MetaSprite__yPos
+
+			LDA	nextList, X
+			TAX
+
+			LDA	f:PipeBlockBankOffset + PipeBlock::metaSpritePtr, X
+			TAX
+
+			SEP	#$20
+.A8
+			LDY	#0
+			JSR	MetaSprite__ProcessMetaSprite_Y
+
+			REP	#$20
+.A16
+
+			PLX
+
+			INX
+			INX
+			CPX	tmp1
+		UNTIL_GE
+	ENDIF
+
+	SEP	#$20
+.A8
+
+	RTS
+
+
+
+;; Push a random pipe onto the next array.
+; DB = $7E
+.A8
+.I16
+ROUTINE GenerateNext
+	REP	#$30
+.A16
+	LDA	nextList
+	STA	cursorPipe
+
+	LDX	#0
+	REPEAT
+		LDA	nextList + 2, X
+		STA	nextList, X
+		INX
+		INX
+		CPX	#.sizeof(nextList) - 2
+	UNTIL_GE
+
+	SEP	#$20
+.A8
+	PEA	$7E80
+	PLB
+
+	LDY	#N_BLOCKS * 2
+	JSR	Random__Rnd_U16Y
+
+	PLB
+
+	REP	#$30
+.A16
+
+	TYA
+	AND	#$00FE
+	TAX
+	LDA	f:PipeBlocks, X
+
+	STA	nextList + .sizeof(nextList) - 2
+
+	SEP	#$20
+.A8
+	RTS
+
+
+
+.define METASPRITE_BANK "BANK1"
+.define PIPEDATA_BANK "BANK1"
+
 	.include "resources/pipes/pipes.inc"
+
+
+.segment METASPRITE_BANK
+	MetaSpriteLayoutBank = .bankbyte(*)
 
 ENDMODULE
 

@@ -28,12 +28,90 @@
 	_cannot_enter_
 .endmacro
 
+.macro _pipe_metasprite_ char
+	.byte 1
+		.word	0
+		.word	char | (2 << OAM_CHARATTR_ORDER_SHIFT)
+		.byte	$FF
+.endmacro
+	
+
+.segment METASPRITE_BANK
+
+; MetaSprites
+; ===========
+.proc PipeMetaSprite
+
+Horizontal:
+	_pipe_metasprite_ 0
+
+Vertical:
+	_pipe_metasprite_ 2
+
+SE:
+	_pipe_metasprite_ 4
+
+SW:
+	_pipe_metasprite_ 6
+
+NE:
+	_pipe_metasprite_ 8
+
+NW:
+	_pipe_metasprite_ 10
+
+Cross:
+	_pipe_metasprite_ 12
+
+
+::PipeMetaSprite_Cursor:
+Cursor:
+	.byte	4
+		.byte	0, 0
+		.word	14 | (3 << OAM_CHARATTR_ORDER_SHIFT)
+		.byte	0
+
+		.byte	8, 0
+		.word	14 | (3 << OAM_CHARATTR_ORDER_SHIFT) | OAM_CHARATTR_H_FLIP_FLAG
+		.byte	0
+
+		.byte	0, 8
+		.word	14 | (3 << OAM_CHARATTR_ORDER_SHIFT) | OAM_CHARATTR_V_FLIP_FLAG
+		.byte	0
+
+		.byte	8, 8
+		.word	14 | (3 << OAM_CHARATTR_ORDER_SHIFT) | OAM_CHARATTR_H_FLIP_FLAG | OAM_CHARATTR_V_FLIP_FLAG
+		.byte	0
+
+::PipeMetaSprite_InvalidCursor:
+InvalidCursor:
+	.byte	4
+		.byte	0, 0
+		.word	15 | (3 << OAM_CHARATTR_ORDER_SHIFT)
+		.byte	0
+
+		.byte	8, 0
+		.word	15 | (3 << OAM_CHARATTR_ORDER_SHIFT) | OAM_CHARATTR_H_FLIP_FLAG
+		.byte	0
+
+		.byte	0, 8
+		.word	15 | (3 << OAM_CHARATTR_ORDER_SHIFT) | OAM_CHARATTR_V_FLIP_FLAG
+		.byte	0
+
+		.byte	8, 8
+		.word	15 | (3 << OAM_CHARATTR_ORDER_SHIFT) | OAM_CHARATTR_H_FLIP_FLAG | OAM_CHARATTR_V_FLIP_FLAG
+		.byte	0
+.endproc
+
+
+
+.segment PIPEDATA_BANK
+
 PipeTileMap:
 	.incbin	"pipes.map"
 
 
 PipeBlockBank = .bankbyte(*)
-
 
 .proc StartingBlocks
 	.addr	Up
@@ -41,8 +119,11 @@ PipeBlockBank = .bankbyte(*)
 	.addr	Left
 	.addr	Right
 
+::N_STARTING_BLOCKS = (* - ::StartingBlocks) / 2
+
 Up:
 	_tile_	0, 20
+	.addr	0
 
 	_animation_	0, 20, UP, Up_Filled
 	_cannot_enter_
@@ -55,6 +136,7 @@ Up_Filled:
 
 Down:
 	_tile_	0, 21
+	.addr	0
 
 	_cannot_enter_
 	_animation_	0, 21, DOWN, Down_Filled
@@ -67,6 +149,7 @@ Down_Filled:
 
 Left:
 	_tile_	0, 22
+	.addr	0
 
 	_cannot_enter_
 	_cannot_enter_
@@ -79,6 +162,7 @@ Left_Filled:
 
 Right:
 	_tile_	0, 23
+	.addr	0
 
 	_cannot_enter_
 	_cannot_enter_
@@ -100,10 +184,11 @@ Right_Filled:
 	.addr	NW
 	.addr	Cross
 
-::N_BLOCKS = * - ::PipeBlocks 
+::N_BLOCKS = (* - ::PipeBlocks) / 2
 
 Horizontal:
 	_tile_	0, 0
+	.addr	PipeMetaSprite::Horizontal
 
 	_cannot_enter_
 	_cannot_enter_
@@ -117,6 +202,7 @@ Horizontal_Filled:
 
 Vertical:
 	_tile_	0, 2
+	.addr	PipeMetaSprite::Vertical
 
 	_animation_	1, 2, DOWN,	Vertical_Filled
 	_animation_	1, 3, UP,	Vertical_Filled
@@ -130,6 +216,7 @@ Vertical_Filled:
 
 SE:
 	_tile_	0, 4
+	.addr	PipeMetaSprite::SE
 
 	_cannot_enter_
 	_animation_	1, 4, RIGHT,	SE_Filled
@@ -143,6 +230,7 @@ SE_Filled:
 
 SW:
 	_tile_	0, 6
+	.addr	PipeMetaSprite::SW
 
 	_cannot_enter_
 	_animation_	1, 7, LEFT,	SW_Filled
@@ -156,6 +244,7 @@ SW_Filled:
 
 NE:
 	_tile_	0, 8
+	.addr	PipeMetaSprite::NE
 
 	_animation_	1, 7, RIGHT,	NE_Filled
 	_cannot_enter_
@@ -169,6 +258,7 @@ NE_Filled:
 
 NW:
 	_tile_	0, 10
+	.addr	PipeMetaSprite::NW
 
 	_animation_	1, 10, LEFT,	NW_Filled
 	_cannot_enter_
@@ -182,6 +272,7 @@ NW_Filled:
 
 Cross:
 	_tile_	0, 12
+	.addr	PipeMetaSprite::Cross
 
 	_animation_	1, 16, DOWN,	Cross_Vertical_Filled
 	_animation_	1, 18, UP,	Cross_Vertical_Filled
@@ -209,7 +300,6 @@ Cross_Horizontal_Filled:
 
 Cross_Both_Filled:
 	_filled_block_	0, 19
-
 
 .endproc
 

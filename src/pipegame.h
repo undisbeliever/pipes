@@ -35,6 +35,9 @@ PIPE_ANIMATION_COUNT = 15
 	;; The address within the `PipeTileMap` of the tile to display.
 	tilePos		.addr
 
+	;; The address of the metasprite representing this pipe
+	metaSpritePtr		.addr
+
 	;; The animations for each of the 4 directions
 	animations	.tag	PipeBlockAnimation 4
 .endstruct

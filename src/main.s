@@ -39,18 +39,14 @@ ROUTINE Main
 	PLB
 
 	REPEAT
-		JSR	PipeTiles__NewGame
+		JSR	PipeGame__NewGame
 
 		REPEAT
 			JSR	Screen__WaitFrame
 
-			JSR	PipeTiles__Update
+			JSR	PipeGame__Update
 		UNTIL_C_CLEAR
 	FOREVER
-
-
-;; ::DEBUG::
-MetaSpriteLayoutBank = .bankbyte(*)
 
 
 .segment "COPYRIGHT"
