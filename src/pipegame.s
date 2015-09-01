@@ -291,14 +291,21 @@ ROUTINE	NewGame
 
 	LDX	#0
 	STX	animationCounter
+
+	LDA	#PIPE_PLAYFIELD_WIDTH / 2
+	STA	cursorXpos
+
+	LDA	#PIPE_PLAYFIELD_HEIGHT / 2
+	STA	cursorYpos
+
+	; Reset stats
+
+	LDX	#0
 	STX	nPiecesPlaced
 	STX	runLength
 
 	STZ	playTimeFrames
 	STX	playTimeSeconds
-
-	STZ	cursorXpos
-	STZ	cursorYpos
 
 
 
