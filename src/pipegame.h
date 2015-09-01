@@ -48,9 +48,25 @@ PIPE_ANIMATION_COUNT = 15
 
 IMPORT_MODULE PipeGame
 
-	;; If non-zero then the player can override unused
-	;; pipe tiles.
+	;; Config
+	;; ------
+
+	;;; If non-zero then the player can override unused
+	;;; pipe tiles.
 	BYTE	canReplacePipes
+
+	;; Stats
+	;; -----
+
+	;;; Number of pieces placed
+	UINT16	nPiecesPlaced
+
+	;;; Length of the flowing water (in pipes)
+	UINT16	runLength
+
+	;;; Number of seconds played in the level
+	UINT16	playTimeSeconds
+
 
 	;; Sets up the PPU, tiles, etc
 	;; REQUIRES: 8 bit A, 16 bit Index, DB Access Registrers

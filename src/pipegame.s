@@ -20,7 +20,6 @@ PIPE_ORDER		= 1
 PIPE_EMPTY_TILE		= 0
 PIPE_TILEMAP_OFFSET	= (PIPE_EMPTY_TILE + 1) | (PIPE_PALETTE << TILEMAP_PALETTE_SHIFT) | (PIPE_ORDER << TILEMAP_ORDER_SHIFT)
 
-
 CONFIG	PIPE_PLAYFIELD_WIDTH, 12
 CONFIG  PIPE_PLAYFIELD_HEIGHT, 12
 
@@ -55,6 +54,13 @@ MODULE PipeGame
 	BYTE	updateBufferOnZero
 
 	BYTE	canReplacePipes
+
+	UINT16	nPiecesPlaced
+	UINT16	runLength
+
+	UINT16	playTimeSeconds
+	UINT8	playTimeFrames
+
 
 
 .segment "WRAM7E"
@@ -285,6 +291,11 @@ ROUTINE	NewGame
 
 	LDX	#0
 	STX	animationCounter
+	STX	nPiecesPlaced
+	STX	runLength
+
+	STZ	playTimeFrames
+	STX	playTimeSeconds
 
 	STZ	cursorXpos
 	STZ	cursorYpos
@@ -543,8 +554,27 @@ ROUTINE	WaitForStart
 .A8
 .I16
 ROUTINE	PlayGame
+	; ::SHOULDO dynamic FPS::
+
+	LDA	playTimeFrames
+	INC
+	CMP	#FPS
+
+	IF_EQ
+		STZ	playTimeFrames
+
+		REP	#$30
+.A16
+		INC	playTimeSeconds
+		IF_ZERO
+			LDA	#$FFFF
+			STA	playTimeSeconds
+		ENDIF
+	ENDIF
+
 	REP	#$30
 .A16
+
 	; Process the pipe animation
 	; --------------------------
 
@@ -561,6 +591,12 @@ ROUTINE	PlayGame
 
 			LDX	animationCellPos
 			STA	grid, X
+
+			INC	runLength
+			IF_ZERO
+				LDA	#$FFFF
+				STA	runLength
+			ENDIF
 
 			SEP	#$20
 .A8
@@ -798,6 +834,12 @@ _CursorInvalid:
 		LDA	Controller__pressed
 
 		IF_BIT	#JOY_BUTTONS
+			INC	nPiecesPlaced
+			IF_ZERO
+				LDA	#$FFFF
+				STA	nPiecesPlaced
+			ENDIF
+
 			; tmp1 = gridPos
 			LDX	tmp1
 			LDA	cursorPipe
