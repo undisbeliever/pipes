@@ -2,7 +2,6 @@
 ; Details of the pipes
 ; --------------------
 
-
 .macro _tile_ xPos, yPos
 	.addr	(xPos + yPos * 32) * 4
 .endmacro
@@ -13,6 +12,14 @@
 	.byte	PIPE_DIRECTION::exit
 .endmacro
 
+.macro _can_replace_pipe_
+	.byte	$FF
+.endmacro
+
+.macro _no_replace_
+	.byte	0
+.endmacro
+
 .macro _cannot_enter_
 	.addr	0
 	.addr	0
@@ -21,6 +28,8 @@
 
 .macro _filled_block_ xPos, yPos
 	_tile_ xPos, yPos
+	_no_replace_
+	.addr	0
 
 	_cannot_enter_
 	_cannot_enter_
@@ -123,6 +132,7 @@ PipeBlockBank = .bankbyte(*)
 
 Up:
 	_tile_	0, 20
+	_no_replace_
 	.addr	0
 
 	_animation_	0, 20, UP, Up_Filled
@@ -136,6 +146,7 @@ Up_Filled:
 
 Right:
 	_tile_	0, 21
+	_no_replace_
 	.addr	0
 
 	_cannot_enter_
@@ -149,6 +160,7 @@ Right_Filled:
 
 Down:
 	_tile_	0, 22
+	_no_replace_
 	.addr	0
 
 	_cannot_enter_
@@ -162,6 +174,7 @@ Down_Filled:
 
 Left:
 	_tile_	0, 23
+	_no_replace_
 	.addr	0
 
 	_cannot_enter_
@@ -189,6 +202,7 @@ Left_Filled:
 ::PipeBlock_Horizontal:
 Horizontal:
 	_tile_	0, 0
+	_can_replace_pipe_
 	.addr	PipeMetaSprite::Horizontal
 
 	_cannot_enter_
@@ -204,6 +218,7 @@ Horizontal_Filled:
 ::PipeBlock_Vertical:
 Vertical:
 	_tile_	0, 2
+	_can_replace_pipe_
 	.addr	PipeMetaSprite::Vertical
 
 	_animation_	1, 3, UP,	Vertical_Filled
@@ -218,6 +233,7 @@ Vertical_Filled:
 
 SE:
 	_tile_	0, 4
+	_can_replace_pipe_
 	.addr	PipeMetaSprite::SE
 
 	_animation_	1, 4, RIGHT,	SE_Filled
@@ -232,6 +248,7 @@ SE_Filled:
 
 SW:
 	_tile_	0, 6
+	_can_replace_pipe_
 	.addr	PipeMetaSprite::SW
 
 	_animation_	1, 7, LEFT,	SW_Filled
@@ -246,6 +263,7 @@ SW_Filled:
 
 NE:
 	_tile_	0, 8
+	_can_replace_pipe_
 	.addr	PipeMetaSprite::NE
 
 	_cannot_enter_
@@ -260,6 +278,7 @@ NE_Filled:
 
 NW:
 	_tile_	0, 10
+	_can_replace_pipe_
 	.addr	PipeMetaSprite::NW
 
 	_cannot_enter_
@@ -274,6 +293,7 @@ NW_Filled:
 
 Cross:
 	_tile_	0, 12
+	_can_replace_pipe_
 	.addr	PipeMetaSprite::Cross
 
 	_animation_	1, 18, UP,	Cross_Vertical_Filled
@@ -284,6 +304,7 @@ Cross:
 
 Cross_Vertical_Filled:
 	_tile_	0, 13
+	_no_replace_
 	.addr	0
 
 	_cannot_enter_
@@ -294,6 +315,7 @@ Cross_Vertical_Filled:
 
 Cross_Horizontal_Filled:
 	_tile_	0, 17
+	_no_replace_
 	.addr	0
 
 	_animation_	1, 19, UP,	Cross_Both_Filled

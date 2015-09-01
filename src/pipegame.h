@@ -35,8 +35,11 @@ PIPE_ANIMATION_COUNT = 15
 	;; The address within the `PipeTileMap` of the tile to display.
 	tilePos		.addr
 
+	;; If non-zero then this pipe can be replaced
+	canReplace	.byte
+
 	;; The address of the metasprite representing this pipe
-	metaSpritePtr		.addr
+	metaSpritePtr	.addr
 
 	;; The animations for each of the 4 directions
 	;; Directions are in the order of PIPE_DIRECTION enum
@@ -44,6 +47,11 @@ PIPE_ANIMATION_COUNT = 15
 .endstruct
 
 IMPORT_MODULE PipeGame
+
+	;; If non-zero then the player can override unused
+	;; pipe tiles.
+	BYTE	canReplacePipes
+
 	;; Sets up the PPU, tiles, etc
 	;; REQUIRES: 8 bit A, 16 bit Index, DB Access Registrers
 	;; SETS: DP = 0

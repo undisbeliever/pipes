@@ -54,6 +54,8 @@ MODULE PipeGame
 .segment "SHADOW"
 	BYTE	updateBufferOnZero
 
+	BYTE	canReplacePipes
+
 
 .segment "WRAM7E"
 	WORD	buffer, 32 * 32
@@ -64,7 +66,6 @@ MODULE PipeGame
 
 	;; Current game state
 	ADDR	state
-
 
 	;; Address of the PipeBlock in PipeBlockBank
 	;; that the cursor is on
@@ -113,6 +114,12 @@ MODULE PipeGame
 ROUTINE Init
 	PEA	0
 	PLD
+
+	; Reset game config
+	LDA	#1
+	STA	canReplacePipes
+
+
 
 	LDA	#INIDISP_FORCE
 	STA	INIDISP
@@ -744,15 +751,39 @@ ROUTINE	PlayGame
 	ADD	tmp1
 	ASL
 
+	; tmp1 = gridPos
+	; can place piece if:
+	;	- gridPos != animationCellPos
+	;	- cell is empty
+	;	- cell's canReplace value is true AND canReplacePipes is true
+
+	STA	tmp1
+
+	CMP	animationCellPos
+	BEQ	_CursorInvalid
+
 	TAX
 	LDA	grid, X
+	BEQ	_CursorValid
 
+	TAX
 
 	SEP	#$20
 .A8
-	IF_ZERO
+	LDA	canReplacePipes
+	BEQ	_CursorInvalid
+
+	LDA	f:PipeBlockBankOffset + PipeBlock::canReplace, X
+
+	IF_NOT_ZERO
+_CursorValid:
+		SEP	#$20
+.A8
 		LDA	#0
 	ELSE
+_CursorInvalid:
+		SEP	#$20
+.A8
 		LDA	#$FF
 	ENDIF
 
@@ -767,7 +798,8 @@ ROUTINE	PlayGame
 		LDA	Controller__pressed
 
 		IF_BIT	#JOY_BUTTONS
-			; X = cell pos
+			; tmp1 = gridPos
+			LDX	tmp1
 			LDA	cursorPipe
 			STA	grid, X
 
