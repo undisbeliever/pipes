@@ -40,6 +40,8 @@ CONFIG	PIPE_NEWGAME_PADDING, 3
 
 CONFIG	STARTING_ANIMATION_SPEED, 256 / (3 * FPS / PIPE_ANIMATION_COUNT)
 
+CONFIG	PIPE_FAST_ANIMATION_SPEED, ((PIPE_ANIMATION_COUNT + 1) << 8) / 3
+
 PipeBlockBankOffset	= PipeBlockBank << 16
 
 MODULE PipeGame
@@ -675,17 +677,14 @@ ROUTINE	PlayGame
 
 	LDX	animationPtr
 	IFL_NOT_ZERO
+
 		LDA	animationCounter
 		ADD	animationSpeed
 		STA	animationCounter
 
 		CMP	#(PIPE_ANIMATION_COUNT + 1) << 8
-		IFL_GE
-			LDX	animationPtr
-			LDA	f:PipeBlockBankOffset + PipeBlockAnimation::pipeBlockPtr, X
-
-			LDX	animationCellPos
-			STA	grid, X
+		IF_GE
+			STZ	animationCounter
 
 			INC	runLength
 			IF_ZERO
@@ -693,121 +692,33 @@ ROUTINE	PlayGame
 				STA	runLength
 			ENDIF
 
+
+			LDX	animationPtr
+			LDA	f:PipeBlockBankOffset + PipeBlockAnimation::pipeBlockPtr, X
+
+			LDX	animationCellPos
+			STA	grid, X
+
 			SEP	#$20
 .A8
 			JSR	DrawTile
 
-			; Select next pipe
+
 			LDX	animationPtr
-			LDA	f:PipeBlockBankOffset + PipeBlockAnimation::exitDirection, X
-
 			LDY	animationCellPos
+			JSR	DetermineNextAnimationCell
 
-
-			CMP	#PIPE_DIRECTION::END
-			IF_EQ
-				JMP	FinishedLevel
-			ENDIF
-
-			IF_BIT	#PIPE_DIRECTION::UP | PIPE_DIRECTION::DOWN
-				CMP	#PIPE_DIRECTION::UP
-				IF_EQ
-					; UP
-
-					REP	#$30
-.A16
-					LDA	animationCellPos
-					AND	#$FFE0
-					IF_ZERO
-						JMP	SprungALeak
-					ENDIF
-
-					LDA	animationCellPos
-					SUB	#16 * 2
-					STA	animationCellPos
-
-					LDY	#0 * .sizeof(PipeBlockAnimation)
-				ELSE
-					; DOWN
-
-					REP	#$30
-.A16
-					LDA	animationCellPos
-					AND	#$FFE0
-					CMP	#(PIPE_PLAYFIELD_HEIGHT - 1) * 32
-					IF_GE
-						JMP	SprungALeak
-					ENDIF
-
-					LDA	animationCellPos
-					ADD	#16 * 2
-					STA	animationCellPos
-
-					LDY	#1 * .sizeof(PipeBlockAnimation)
-				ENDIF
+			IF_N_SET
+				JSR	FinishedLevel
 			ELSE
-.A8
-				CMP	#PIPE_DIRECTION::LEFT
-				IF_EQ
-					; LEFT
+				IF_C_SET
+					STX	animationPtr
+					STY	animationCellPos
 
-					REP	#$30
-.A16
-					LDA	animationCellPos
-					AND	#$1F
-					IF_ZERO
-						JMP	SprungALeak
-					ENDIF
-
-					LDA	animationCellPos
-					DEC
-					DEC
-					STA	animationCellPos
-
-					LDY	#2 * .sizeof(PipeBlockAnimation)
 				ELSE
-					; RIGHT
-
-					REP	#$30
-.A16
-					LDA	animationCellPos
-					AND	#$1F
-					CMP	#(PIPE_PLAYFIELD_WIDTH - 1) * 2
-					IF_GE
-						JMP	SprungALeak
-					ENDIF
-
-					LDA	animationCellPos
-					INC
-					INC
-					STA	animationCellPos
-
-					LDY	#3 * .sizeof(PipeBlockAnimation)
+					JSR	SprungALeak
 				ENDIF
 			ENDIF
-
-.A16
-			; A = new animationCellPos
-			; Y = pipeBlockAnimation offset
-
-			TAX
-			LDA	grid, X
-			IF_ZERO
-				JMP	SprungALeak
-			ENDIF
-
-			STY	tmp1
-			ADD	tmp1
-			ADD	#PipeBlock::animations
-			TAX
-
-			LDA	f:PipeBlockBankOffset + PipeBlockAnimation::pipeBlockPtr, X
-			IF_ZERO
-				JMP	SprungALeak
-			ENDIF
-
-			STX	animationPtr
-			STZ	animationCounter
 		ELSE
 .A16
 			SEP	#$20
@@ -1007,6 +918,148 @@ ROUTINE	PauseGame
 ;; Common
 ;; ======
 
+;; Get the next pipe in the animation sequence
+;; IN:
+;;	X - PipeBlockAnimation pointer
+;;	Y - grid position
+;;
+;; OUT:
+;;	X - PipeBlockAnimation pointer, 0 if animation invalid
+;;	Y - grid position
+;;	N - set if current pipe is an end pipe
+;;	C - set if pipe continues onward, clear if not more animations (leaking or at end)
+.A8
+.I16
+ROUTINE DetermineNextAnimationCell
+tmp_animationPtr	= tmp1
+tmp_cellPos		= tmp2
+tmp_offset		= tmp3
+
+
+	STX	tmp_animationPtr
+	STY	tmp_cellPos
+
+	; Select next pipe
+	LDA	f:PipeBlockBankOffset + PipeBlockAnimation::exitDirection, X
+
+	CMP	#PIPE_DIRECTION::END
+	IF_EQ
+		; set N, clear C
+		SEP	#$80
+		CLC
+		RTS
+	ENDIF
+
+	IF_BIT	#PIPE_DIRECTION::UP | PIPE_DIRECTION::DOWN
+		CMP	#PIPE_DIRECTION::UP
+		IF_EQ
+			; UP
+
+			REP	#$30
+.A16
+			LDA	tmp_cellPos
+			AND	#$FFE0
+			BEQ	_NoMorePipe
+
+			LDA	tmp_cellPos
+			SUB	#16 * 2
+			STA	tmp_cellPos
+
+			LDY	#0 * .sizeof(PipeBlockAnimation)
+		ELSE
+			; DOWN
+
+			REP	#$30
+.A16
+			LDA	tmp_cellPos
+			AND	#$FFE0
+			CMP	#(PIPE_PLAYFIELD_HEIGHT - 1) * 32
+			BGE	_NoMorePipe
+
+			LDA	tmp_cellPos
+			ADD	#16 * 2
+			STA	tmp_cellPos
+
+			LDY	#1 * .sizeof(PipeBlockAnimation)
+		ENDIF
+	ELSE
+.A8
+		CMP	#PIPE_DIRECTION::LEFT
+		IF_EQ
+			; LEFT
+
+			REP	#$30
+.A16
+			LDA	tmp_cellPos
+			AND	#$1F
+			BEQ	_NoMorePipe
+
+			LDA	tmp_cellPos
+			DEC
+			DEC
+			STA	tmp_cellPos
+
+			LDY	#2 * .sizeof(PipeBlockAnimation)
+		ELSE
+			; RIGHT
+
+			REP	#$30
+.A16
+			LDA	tmp_cellPos
+			AND	#$1F
+			CMP	#(PIPE_PLAYFIELD_WIDTH + 1) * 2
+			BGE	_NoMorePipe
+
+			LDA	tmp_cellPos
+			INC
+			INC
+			STA	tmp_cellPos
+
+			LDY	#3 * .sizeof(PipeBlockAnimation)
+		ENDIF
+	ENDIF
+
+.A16
+	; A = new cell pos
+	; Y = pipeBlockAnimation offset
+
+	TAX
+	LDA	grid, X
+	BEQ	_NoMorePipe
+
+	STY	tmp_offset
+	ADD	tmp_offset
+	ADD	#PipeBlock::animations
+	TAX
+
+	LDA	f:PipeBlockBankOffset + PipeBlockAnimation::pipeBlockPtr, X
+	BEQ	_NoMorePipe
+
+
+	; Return:
+	;	8 bit A, 16 bit Index, C set, N clear
+	;	X = animation ptr
+	;	Y = cellPos
+	SEP	#$21
+	REP	#$90
+.A8
+.A16
+	; X = animation ptr
+	LDY	tmp_cellPos
+	RTS
+
+
+_NoMorePipe:
+	; 8 bit A, 16 bit Index, C clear, N clear
+	SEP	#$20
+	REP	#$91
+.A8
+.A16
+	LDX	#0
+	LDY	tmp_cellPos
+	RTS
+
+
 
 ;; Draws the tile currently being animated
 ;; REQUIRES: DP access buffer
@@ -1088,9 +1141,6 @@ ROUTINE DrawTile
 
 	REP	#$30
 .A16
-
-	CPX	animationCellPos
-	BEQ	DrawAnimation
 
 
 	TXA
