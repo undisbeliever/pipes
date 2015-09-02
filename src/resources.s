@@ -28,6 +28,8 @@ VramTable:
 	.faraddr	PipeGame_Background_TileMap
 
 
+.segment "BANK2"
+
 PipeGame_Pipes_Tiles:
 	.byte	VramDataFormat::UNCOMPRESSED
 	.word	PipeGame_Pipes_Tiles_End - PipeGame_Pipes_Tiles - 3

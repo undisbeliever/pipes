@@ -12,6 +12,9 @@
 	DOWN	= 2
 	LEFT	= 4
 	RIGHT	= 8
+
+	;; End of the pipe, the level is completed.
+	END	= $FF
 .endenum
 
 PIPE_ANIMATION_COUNT = 15

@@ -26,13 +26,15 @@ CONFIG  PIPE_PLAYFIELD_HEIGHT, 12
 CONFIG  PIPE_PLAYFIELD_XPOS, 48
 CONFIG  PIPE_PLAYFIELD_YPOS, 16
 
-
 CONFIG	PIPE_MAX_NEXT, 8
 
 CONFIG	PIPE_NEXTLIST_XPOS, 16
 CONFIG	PIPE_NEXTLIST_YPOS, 44
 
 CONFIG	PIPE_NEXTLIST_SPACING, 1
+
+;; Minimum manhattan distance between the start and end pipes
+CONFIG	PIPE_MIN_START_END_DISTANCE, 6
 
 CONFIG	PIPE_NEWGAME_PADDING, 3
 
@@ -44,10 +46,11 @@ MODULE PipeGame
 
 .enum GameState
 	GAME_OVER	=  0
-	WAIT_FOR_START	=  2
-	PLAY_GAME	=  4
-	PAUSE		=  6
-	LEAKING		=  8
+	NEW_GAME	=  2
+	WAIT_FOR_START	=  4
+	PLAY_GAME	=  6
+	PAUSE		=  8
+	LEAKING		= 10
 .endenum
 
 .segment "SHADOW"
@@ -61,6 +64,12 @@ MODULE PipeGame
 	UINT16	playTimeSeconds
 	UINT8	playTimeFrames
 
+
+	WORD	tmp1
+	WORD	tmp2
+	WORD	tmp3
+	WORD	tmp4
+	WORD	tmp5
 
 
 .segment "WRAM7E"
@@ -110,9 +119,6 @@ MODULE PipeGame
 	;; Starts at PIPE_ANIMATION_COUNT goes down to 0
 	;; 0:8:8 fixed point
 	WORD	animationCounter
-
-
-	WORD	tmp1
 .code
 
 .A8
@@ -219,8 +225,10 @@ ROUTINE Init
 	LDA	#TM_BG1 | TM_BG2 | TM_OBJ
 	STA	TM
 
+	LDX	#GameState::NEW_GAME
+	STX	state
 
-	JMP	NewGame
+	JMP	Clear
 
 
 
@@ -265,6 +273,7 @@ ROUTINE Update
 .rodata
 StateTable:
 	.addr	GameOver
+	.addr	NewGame
 	.addr	WaitForStart
 	.addr	PlayGame
 	.addr	PauseGame
@@ -277,6 +286,13 @@ StateTable:
 .A8
 .I16
 ROUTINE	NewGame
+
+tmpDistance	= tmp1
+tmpXpos		= tmp2
+tmpYpos		= tmp3
+tmpX2pos	= tmp4
+tmpY2pos	= tmp5
+
 	PHB
 	LDA	#.bankbyte(buffer)
 	PHA
@@ -323,17 +339,21 @@ ROUTINE	NewGame
 
 	; Random start location
 	; ---------------------
+	PEA	$7E80
+	PLB
 
 	LDY	#PIPE_PLAYFIELD_WIDTH - PIPE_NEWGAME_PADDING * 2
 	JSR	Random__Rnd_U16Y
-	STY	tmp1
+	STY	tmpXpos
 
 	LDY	#PIPE_PLAYFIELD_HEIGHT - PIPE_NEWGAME_PADDING * 2
 	JSR	Random__Rnd_U16Y
-	PHY
+	STY	tmpYpos
 
 	LDY	#N_STARTING_BLOCKS
 	JSR	Random__Rnd_U16Y
+
+	PLB
 
 	REP	#$30
 .A16
@@ -342,14 +362,13 @@ ROUTINE	NewGame
 	TAX
 
 
-
-	PLA
+	LDA	tmpYpos
 	ADD	#PIPE_NEWGAME_PADDING
 	ASL
 	ASL
 	ASL
 	ASL
-	ADD	tmp1
+	ADD	tmpXpos
 	ADD	#PIPE_NEWGAME_PADDING
 	ASL
 	TAY
@@ -418,7 +437,76 @@ ROUTINE	NewGame
 	TYX
 	JSR	DrawTile
 
-	JSR	DrawAnimation
+
+	; Draw the end tile
+	; -----------------
+
+	PEA	$7E80
+	PLB
+
+.A8
+	REPEAT
+		LDY	#PIPE_PLAYFIELD_WIDTH - PIPE_NEWGAME_PADDING * 2
+		JSR	Random__Rnd_U16Y
+		STY	tmpX2pos
+
+		LDY	#PIPE_PLAYFIELD_HEIGHT - PIPE_NEWGAME_PADDING * 2
+		JSR	Random__Rnd_U16Y
+		STY	tmpY2pos
+
+		REP	#$30
+.A16
+		TYA
+		SUB	tmpYpos
+		IF_MINUS
+			NEG16
+		ENDIF
+		STA	tmpDistance
+
+		LDA	tmpX2pos
+		SUB	tmpXpos
+		IF_MINUS
+			NEG16
+		ENDIF
+
+		ADD	tmpDistance
+		CMP	#PIPE_MIN_START_END_DISTANCE
+
+		SEP	#$20
+.A8
+	UNTIL_GE
+
+	LDY	#N_ENDING_BLOCKS
+	JSR	Random__Rnd_U16Y
+
+	PLB
+
+	REP	#$20
+.A16
+	TYA
+	ASL
+	TAX
+
+
+	LDA	tmpY2pos
+	ADD	#PIPE_NEWGAME_PADDING
+	ASL
+	ASL
+	ASL
+	ASL
+	ADD	tmpX2pos
+	ADD	#PIPE_NEWGAME_PADDING
+	ASL
+	TAY
+
+	LDA	f:EndingBlocks, X
+	STA	grid, Y
+
+	SEP	#$20
+.A8
+
+	TYX
+	JSR	DrawTile
 
 	LDX	#GameState::WAIT_FOR_START
 	STX	state
@@ -615,6 +703,11 @@ ROUTINE	PlayGame
 
 			LDY	animationCellPos
 
+
+			CMP	#PIPE_DIRECTION::END
+			IF_EQ
+				JMP	FinishedLevel
+			ENDIF
 
 			IF_BIT	#PIPE_DIRECTION::UP | PIPE_DIRECTION::DOWN
 				CMP	#PIPE_DIRECTION::UP
@@ -863,6 +956,18 @@ _CursorInvalid:
 	JSR	DrawCursorPipe
 	JSR	DrawNextList
 
+	RTS
+
+
+;; The level is over
+;; Prep the score
+.A8
+.I16
+ROUTINE	FinishedLevel
+	LDX	#GameState::GAME_OVER
+	STX	state
+
+	; ::TODO::
 	RTS
 
 

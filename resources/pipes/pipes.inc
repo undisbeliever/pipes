@@ -188,6 +188,72 @@ Left_Filled:
 .endproc
 
 
+.proc EndingBlocks
+	.addr	EndDown
+	.addr	EndLeft
+	.addr	EndUp
+	.addr	EndRight
+
+::N_ENDING_BLOCKS = (* - ::EndingBlocks) / 2
+
+EndDown:
+	_tile_	0, 20
+	_no_replace_
+	.addr	0
+
+	_cannot_enter_
+	_animation_	0, 24, END, EndDown_Filled
+	_cannot_enter_
+	_cannot_enter_
+
+EndDown_Filled:
+	_filled_block_	15, 20
+
+
+EndLeft:
+	_tile_	0, 21
+	_no_replace_
+	.addr	0
+
+	_cannot_enter_
+	_cannot_enter_
+	_animation_	0, 25, END, EndLeft_Filled
+	_cannot_enter_
+
+EndLeft_Filled:
+	_filled_block_	15, 21
+
+
+EndUp:
+	_tile_	0, 22
+	_no_replace_
+	.addr	0
+
+	_animation_	0, 26, END, EndUp_Filled
+	_cannot_enter_
+	_cannot_enter_
+	_cannot_enter_
+
+EndUp_Filled:
+	_filled_block_	15, 22
+
+
+EndRight:
+	_tile_	0, 23
+	_no_replace_
+	.addr	0
+
+	_cannot_enter_
+	_cannot_enter_
+	_cannot_enter_
+	_animation_	0, 27, END, EndRight_Filled
+
+EndRight_Filled:
+	_filled_block_	15, 23
+
+.endproc
+
+
 .proc PipeBlocks
 	.addr	Horizontal
 	.addr	Vertical
