@@ -84,6 +84,10 @@ MODULE PipeGame
 	;; Current game state
 	ADDR	state
 
+
+	;; non-zero if the current pipe is connected to the end.
+	WORD	pipeConnectedToEnd
+
 	;; Address of the PipeBlock in PipeBlockBank
 	;; that the cursor is on
 	ADDR	cursorPipe
@@ -309,6 +313,7 @@ tmpY2pos	= tmp5
 
 	LDX	#0
 	STX	animationCounter
+	STX	pipeConnectedToEnd
 
 	LDA	#PIPE_PLAYFIELD_WIDTH / 2
 	STA	cursorXpos
@@ -678,9 +683,17 @@ ROUTINE	PlayGame
 	LDX	animationPtr
 	IFL_NOT_ZERO
 
-		LDA	animationCounter
-		ADD	animationSpeed
-		STA	animationCounter
+		LDA	pipeConnectedToEnd
+		IF_ZERO
+			LDA	animationCounter
+			ADD	animationSpeed
+			STA	animationCounter
+		ELSE
+			; 'fast' mode
+			LDA	animationCounter
+			ADD	#PIPE_FAST_ANIMATION_SPEED
+			STA	animationCounter
+		ENDIF
 
 		CMP	#(PIPE_ANIMATION_COUNT + 1) << 8
 		IF_GE
@@ -858,6 +871,23 @@ _CursorInvalid:
 
 			JSR	DrawTile
 			JSR	GenerateNextPipe
+
+			SEP	#$20
+.A8
+			; check to see if pipe if connected to end
+			LDX	animationPtr
+			LDY	animationCellPos
+
+			REPEAT
+				JSR	DetermineNextAnimationCell
+			UNTIL_C_CLEAR
+
+			IF_N_SET
+				LDA	#1
+				STA	pipeConnectedToEnd
+			ELSE
+				STZ	pipeConnectedToEnd
+			ENDIF
 		ENDIF
 
 		SEP	#$20
