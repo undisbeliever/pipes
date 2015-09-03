@@ -54,6 +54,9 @@ IMPORT_MODULE PipeGame
 	;; Config
 	;; ------
 
+	;;; The level to play
+	BYTE	level
+
 	;;; If non-zero then the player can override unused
 	;;; pipe tiles.
 	BYTE	canReplacePipes

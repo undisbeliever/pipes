@@ -28,6 +28,8 @@ CONFIG  PIPE_PLAYFIELD_YPOS, 16
 
 CONFIG	PIPE_MAX_NEXT, 8
 
+CONFIG	N_LEVELS, 30
+
 CONFIG	PIPE_NEXTLIST_XPOS, 16
 CONFIG	PIPE_NEXTLIST_YPOS, 44
 
@@ -58,6 +60,7 @@ MODULE PipeGame
 .segment "SHADOW"
 	BYTE	updateBufferOnZero
 
+	BYTE	level
 	BYTE	canReplacePipes
 
 	UINT16	nPiecesPlaced
@@ -135,7 +138,8 @@ ROUTINE Init
 
 	; Reset game config
 	LDA	#1
-	STA	canReplacePipes
+	STA	level
+	STZ	canReplacePipes
 
 
 
@@ -306,14 +310,34 @@ tmpY2pos	= tmp5
 
 	JSR	Clear
 
+	LDA	level
+	DEC
+	CMP	#N_LEVELS
+	IF_GE
+		LDA	#N_LEVELS
+		STA	level
+	ENDIF
 
-	;; ::TODO speed determined by level and region::
-	LDX	#STARTING_ANIMATION_SPEED
-	STX	animationSpeed
+	REP	#$30
+.A16
+	AND	#$00FF
+	ASL
+	TAX
+	; ::TODO pal/ntsc selection::
 
-	LDX	#0
-	STX	animationCounter
-	STX	pipeConnectedToEnd
+	LDA	STAT77
+	IF_BIT	#STAT78_PAL_MASK << 8
+		LDA	f:PalSpeedTable, X
+	ELSE
+		LDA	f:NtscSpeedTable, X
+	ENDIF
+	STA	animationSpeed
+
+	STZ	animationCounter
+	STZ	pipeConnectedToEnd
+
+	SEP	#$20
+.A8
 
 	LDA	#PIPE_PLAYFIELD_WIDTH / 2
 	STA	cursorXpos
@@ -908,7 +932,8 @@ ROUTINE	FinishedLevel
 	LDX	#GameState::GAME_OVER
 	STX	state
 
-	; ::TODO::
+	INC	level
+
 	RTS
 
 
@@ -1386,6 +1411,18 @@ ROUTINE GenerateNextPipe
 .define PIPEDATA_BANK "BANK1"
 
 	.include "resources/pipes/pipes.inc"
+
+.macro _speed_table fps
+	.repeat	N_LEVELS, i
+		.word 256 / (100 * fps / PIPE_ANIMATION_COUNT / ((i * 3) + 10))
+	.endrepeat
+.endmacro
+
+NtscSpeedTable:
+	_speed_table 60
+
+PalSpeedTable:
+	_speed_table 50
 
 
 .segment METASPRITE_BANK
