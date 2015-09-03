@@ -5,6 +5,7 @@
 .include "includes/structure.inc"
 .include "includes/config.inc"
 .include "routines/random.h"
+.include "routines/controller.h"
 .include "routines/screen.h"
 .include "routines/metasprite.h"
 
@@ -26,7 +27,6 @@ ROUTINE Main
 	LDXY	#$d3ac47		; source: random.org
 	STXY	Random__Seed
 
-	;; ::DEBUG Needed for compiling::
 	MetaSprite_Init
 
 	JSR	PipeGame__Init
@@ -34,19 +34,45 @@ ROUTINE Main
 	LDA	#15
 	STA	INIDISP
 
-	LDA	#$7E
-	PHA
-	PLB
+	JSR	WaitForButtonPress
 
 	REPEAT
-		JSR	PipeGame__NewGame
+		PEA	$807E
+		PLB
+			JSR	PipeGame__NewGame
+		PLB
 
 		REPEAT
 			JSR	Screen__WaitFrame
+			JSR	Random__AddJoypadEntropy
 
-			JSR	PipeGame__Update
+			PEA	$807E
+			PLB
+				JSR	PipeGame__Update
+			PLB
 		UNTIL_C_CLEAR
+
+		JSR	WaitForButtonPress
 	FOREVER
+
+
+.A8
+.I16
+ROUTINE WaitForButtonPress
+	REPEAT
+		JSR	Screen__WaitFrame
+		JSR	Random__AddJoypadEntropy
+
+		REP	#$30
+.A16
+		LDA	Controller__pressed
+		AND	#JOY_BUTTONS | JOY_START
+
+		SEP	#$30
+.A8
+	UNTIL_NE
+
+	RTS
 
 
 .segment "COPYRIGHT"

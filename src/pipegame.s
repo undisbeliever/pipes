@@ -955,9 +955,12 @@ ROUTINE	SprungALeak
 .A8
 .I16
 ROUTINE	Leaking
-	; ::TODO code::
-	REPEAT
-	FOREVER
+	; ::SHOULDO leaking animation::
+
+	LDX	#GameState::GAME_OVER
+	STX	state
+
+	RTS
 
 
 
