@@ -1,11 +1,11 @@
 Pipes
 =====
 
-Augusts's entry into the 1 Game Per Month Challenge.
+August's entry into the 1 Game Per Month Challenge.
 
 <img src="screenshot.png?raw=true" alt="Pipes Screenshot" width="512" height="448">
 
-Connect the pipe from the startig point to the end point.
+Connect the pipe from the starting point to the end point.
 
 
 Controls
@@ -32,7 +32,6 @@ This game is released under the MIT license.
 
 Build Requirements
 ===================
- * snesdev-common
  * ca65
  * pcx2snes
  * gnu Make
