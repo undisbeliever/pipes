@@ -25,7 +25,7 @@ ROUTINE Main
 	STA	NMITIMEN
 
 	LDXY	#$d3ac47		; source: random.org
-	STXY	Random__Seed
+	STXY	Random__seed
 
 	MetaSprite_Init
 
