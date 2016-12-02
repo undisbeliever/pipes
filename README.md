@@ -15,15 +15,6 @@ Controls
  * **B:** Place piece
 
 
-TODO
-====
-This game is incomplete, I ran out of time.
-
- * Dialog system to select level and difficulty
- * Sound Effects
- * Show score when finished level
-
-
 License
 =======
 This game is released under the MIT license.

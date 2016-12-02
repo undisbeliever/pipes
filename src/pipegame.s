@@ -170,9 +170,6 @@ ROUTINE Init
 	Screen_SetVramBaseAndSize PPU_PIPEGAME
 
 
-	; ::SHOULDDO load resource palette macro::
-	; ::SHOULDDO load resource vram macro::
-
 
 	; Background
 	; ----------
@@ -323,7 +320,6 @@ tmpY2pos	= tmp5
 	AND	#$00FF
 	ASL
 	TAX
-	; ::TODO pal/ntsc selection::
 
 	LDA	STAT77
 	IF_BIT	#STAT78_PAL_MASK << 8
@@ -610,8 +606,6 @@ ROUTINE	RedrawBuffer
 
 	JSR	DrawAnimation
 
-	;; ::TODO draw the next pieces bit::
-
 	RTS
 
 
@@ -656,7 +650,6 @@ ROUTINE Clear
 .A8
 .I16
 ROUTINE	GameOver
-	; ::TODO code::
 	RTS
 
 
@@ -666,8 +659,6 @@ ROUTINE	GameOver
 .A8
 .I16
 ROUTINE	WaitForStart
-	; ::TODO code::
-
 	LDX	#GameState::PLAY_GAME
 	STX	state
 
@@ -680,8 +671,6 @@ ROUTINE	WaitForStart
 .A8
 .I16
 ROUTINE	PlayGame
-	; ::SHOULDO dynamic FPS::
-
 	LDA	playTimeFrames
 	INC
 	CMP	#FPS
@@ -955,8 +944,6 @@ ROUTINE	SprungALeak
 .A8
 .I16
 ROUTINE	Leaking
-	; ::SHOULDO leaking animation::
-
 	LDX	#GameState::GAME_OVER
 	STX	state
 
