@@ -35,7 +35,7 @@ CONFIG	PIPE_NEXTLIST_YPOS, 44
 
 CONFIG	PIPE_NEXTLIST_SPACING, 1
 
-;; Minimum manhattan distance between the start and end pipes
+;; Minimum Manhattan distance between the start and end pipes
 CONFIG	PIPE_MIN_START_END_DISTANCE, 6
 
 CONFIG	PIPE_NEWGAME_PADDING, 3

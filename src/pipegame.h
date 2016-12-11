@@ -75,7 +75,7 @@ IMPORT_MODULE PipeGame
 
 
 	;; Sets up the PPU, tiles, etc
-	;; REQUIRES: 8 bit A, 16 bit Index, DB Access Registrers
+	;; REQUIRES: 8 bit A, 16 bit Index, DB Access registers
 	;; SETS: DP = 0
 	ROUTINE Init
 
