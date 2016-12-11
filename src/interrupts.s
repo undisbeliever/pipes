@@ -52,6 +52,6 @@ _VBlankBank:
 	PLD
 	PLB
 	PLA
-	
+
 	RTI
 
