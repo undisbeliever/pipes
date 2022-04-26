@@ -623,7 +623,7 @@ ROUTINE Clear
 	LDX	#.loword(grid)
 	LDY	#.loword(grid) + 2
 	LDA	#.sizeof(grid) - 2 - 1
-	MVN	.bankbyte(grid), .bankbyte(grid)
+	MVN	#.bankbyte(grid), #.bankbyte(grid)
 
 
 	LDA	#PIPE_EMPTY_TILE + PIPE_TILEMAP_OFFSET
@@ -632,7 +632,7 @@ ROUTINE Clear
 	LDX	#.loword(buffer)
 	LDY	#.loword(buffer) + 2
 	LDA	#.sizeof(buffer) - 2 - 1
-	MVN	.bankbyte(buffer), .bankbyte(buffer)
+	MVN	#.bankbyte(buffer), #.bankbyte(buffer)
 
 	SEP	#$20
 .A8
